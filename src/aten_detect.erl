@@ -52,13 +52,14 @@ failure_prob_at(At, #state{freshness = F,
                            factor = A,
                            samples = Samples}) ->
     T = At - F,
-    {TotNum, SmallNum} = array:foldl(fun(_, undefined, Acc) -> Acc;
+    {TotNum, SmallNum} = array:foldl(fun(_, undefined, Acc) ->
+                                             Acc;
                                         (_, S, {Tot, Smaller}) when S * A =< T ->
                                              {Tot+1, Smaller+1};
                                         (_, _S, {Tot, Smaller}) ->
                                              {Tot+1, Smaller}
                                      end, {0, 0}, Samples),
-    SmallNum / TotNum.
+    SmallNum / max(1, TotNum). % avoid div/0
 
 ts() ->
     % TODO: should we use erlang monotonic time instead?
@@ -70,6 +71,7 @@ ts() ->
 
 detect_test() ->
     S0 = #state{},
+    ?assert(failure_prob_at(10, S0) =:= 0.0),
     S = lists:foldl(fun append/2, S0, [1, 5, 4, 10, 13, 20, 25]),
     ?assert(failure_prob_at(28, S) < 0.5),
     ?assert(failure_prob_at(40, S) == 1.0),
