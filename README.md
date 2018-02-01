@@ -6,6 +6,23 @@ Experimental implementation of [A New Adaptive Accrual Failure Detector for Depe
 Status: Draft
 
 
+Use
+---
+
+    % start the aten application if not part of a release
+    ok = aten:start(),
+    % register interest in status changes for a node
+    ok = aten:register(node1@host),
+    % receive status change events
+    receive
+        {node_event, node1@host, down} -> ok;
+        {node_event, node1@host, up} -> ok
+    end
+
+    % deregister interest
+    ok = aten:deregister(node1@host),
+
+
 Build
 -----
 
