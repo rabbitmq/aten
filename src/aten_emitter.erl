@@ -13,10 +13,12 @@
          terminate/2,
          code_change/3]).
 
--record(state, {tref :: reference() | undefined}).
+-define(INTERVAL, 100).
+
+-record(state, {tref :: reference() | undefined,
+                interval = ?INTERVAL :: non_neg_integer() }).
 -type state() :: #state{}.
 
--define(INTERVAL, 100).
 
 
 %%% aten_emitter - emits heartbeats to all connected nodes periodically
@@ -35,7 +37,8 @@ start_link() ->
 
 -spec init(term()) -> {ok, state()}.
 init([]) ->
-    {ok, set_timer(#state{})}.
+    Interval =  application:get_env(aten, heartbeat_interval, ?INTERVAL),
+    {ok, set_timer(#state{interval = Interval})}.
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -58,5 +61,5 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 set_timer(State) ->
-    TRef = erlang:send_after(?INTERVAL, self(), emit_heartbeats),
+    TRef = erlang:send_after(State#state.interval, self(), emit_heartbeats),
     State#state{tref = TRef}.

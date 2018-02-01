@@ -6,7 +6,8 @@ PROJECT_MOD = aten_app
 define PROJECT_ENV
 [
 	{poll_interval, 1000},
-	{heartbeat_interval, 100}
+	{heartbeat_interval, 100},
+	{detection_threshold, 0.99}
 ]
 endef
 

@@ -20,11 +20,10 @@
 -define(DEFAULT_THRESHOLD, 0.99).
 
 -record(state, {tref :: reference() | undefined,
+                interval = ?POLL_INTERVAL_MS :: non_neg_integer(),
                 threshold = ?DEFAULT_THRESHOLD :: float(),
                 node_states = #{} :: #{node() => float()}, % last threshold
                 watchers = #{} :: #{node() => [pid()]}}).
-% -type state() :: #state{}.
-
 
 %%%===================================================================
 %%% API functions
@@ -46,7 +45,12 @@ unregister(Node) ->
 %%%===================================================================
 
 init([]) ->
-    {ok, set_timer(#state{})}.
+    Thresh = application:get_env(aten, detection_threshold,
+                                 ?DEFAULT_THRESHOLD),
+    Interval = application:get_env(aten, poll_interval,
+                                   ?POLL_INTERVAL_MS),
+    {ok, set_timer(#state{threshold = Thresh,
+                          interval = Interval})}.
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -123,7 +127,7 @@ analyse(Curr, Prev, Thresh) ->
 
 
 set_timer(State) ->
-    TRef = erlang:send_after(?POLL_INTERVAL_MS, self(), poll),
+    TRef = erlang:send_after(State#state.interval, self(), poll),
     State#state{tref = TRef}.
 
 try_connect(Node) ->

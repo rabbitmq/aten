@@ -7,6 +7,7 @@
 	{mod, {aten_app, []}},
 	{env, [
 	{poll_interval, 1000},
-	{heartbeat_interval, 100}
+	{heartbeat_interval, 100},
+	{detection_threshold, 0.99}
 ]}
 ]}.
