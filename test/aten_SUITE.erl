@@ -13,7 +13,8 @@ all() ->
 all_tests() ->
     [
      detect_node_up_down_up,
-     unregister_does_not_detect
+     unregister_does_not_detect,
+     watchers_cleanup
     ].
 
 groups() ->
@@ -49,19 +50,19 @@ detect_node_up_down_up(_Config) ->
     ct:pal("Nodes ~p", [nodes()]),
     receive
         {node_event, S1, up} -> ok
-    after 2000 ->
+    after 5000 ->
               exit(node_event_timeout)
     end,
     ok = slave:stop(S1),
     receive
         {node_event, S1, down} -> ok
-    after 2000 ->
+    after 5000 ->
               exit(node_event_timeout)
     end,
     {ok, S1} = start_slave(s1),
     receive
         {node_event, S1, up} -> ok
-    after 2000 ->
+    after 5000 ->
               exit(node_event_timeout)
     end,
     ok =  slave:stop(S1),
@@ -75,17 +76,77 @@ unregister_does_not_detect(_Config) ->
     ct:pal("Nodes ~p", [nodes()]),
     receive
         {node_event, S1, up} -> ok
-    after 2000 ->
+    after 5000 ->
               exit(node_event_timeout)
     end,
     ok = aten:unregister(S1),
     receive
         {node_event, S1, Evt} ->
             exit({unexpected_node_event, S1, Evt})
-    after 2000 ->
+    after 5000 ->
               ok
     end,
     ok.
+
+watchers_cleanup(_Config) ->
+    Node = make_node_name(s1),
+    Self = self(),
+    Watcher = spawn_watcher(Node, Self),
+    ok = aten:register(Node),
+    {ok, Node} = start_slave(s1),
+    receive
+        {watcher_node_up, Node} -> ok
+    after 5000 ->
+        exit(node_event_timeout)
+    end,
+    receive
+        {node_event, Node, up} -> ok
+    after 5000 ->
+        exit(node_event_timeout)
+    end,
+
+    State0 = sys:get_state(aten_detector),
+    Watchers0 = element(6, State0),
+    #{Node := #{Watcher := _}} = Watchers0,
+    #{Node := #{Self := _}} = Watchers0,
+
+    Watcher ! stop,
+
+    ok = slave:stop(Node),
+
+    receive
+        {watcher_node_down, Node} ->
+            exit(stopped_watcher_receive_message)
+    after 50 ->
+            ok
+    end,
+    receive
+        {node_event, Node, down} -> ok
+    after 5000 ->
+        exit(node_event_timeout)
+    end,
+
+    State1 = sys:get_state(aten_detector),
+    Watchers1 = element(6, State1),
+    #{Node := Pids} = Watchers1,
+    #{Node := #{Self := _}} = Watchers1,
+    none = maps:get(Watcher, Pids, none),
+    ok = aten:unregister(Node).
+
+spawn_watcher(Node, Pid) ->
+    spawn(fun Fun() ->
+        ok = aten:register(Node),
+        receive
+            {node_event, Node, up} ->
+                Pid ! {watcher_node_up, Node},
+                Fun();
+            {node_event, Node, down} ->
+                Pid ! {watcher_node_down, Node},
+                Fun();
+            stop -> ok
+        end
+    end).
+
 
 get_current_host() ->
     {ok, H} = inet:gethostname(),
