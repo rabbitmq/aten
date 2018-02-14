@@ -13,7 +13,8 @@ all() ->
 all_tests() ->
     [
      detect_node_up_down_up,
-     unregister_does_not_detect
+     unregister_does_not_detect,
+     watchers_cleanup
     ].
 
 groups() ->
@@ -105,7 +106,7 @@ watchers_cleanup(_Config) ->
     end,
 
     State0 = sys:get_state(aten_detector),
-    Watchers0 = element(4, State0),
+    Watchers0 = element(6, State0),
     #{Node := #{Watcher := _}} = Watchers0,
     #{Node := #{Self := _}} = Watchers0,
 
@@ -126,7 +127,7 @@ watchers_cleanup(_Config) ->
     end,
 
     State1 = sys:get_state(aten_detector),
-    Watchers1 = element(4, State1),
+    Watchers1 = element(6, State1),
     #{Node := Pids} = Watchers1,
     #{Node := #{Self := _}} = Watchers1,
     none = maps:get(Watcher, Pids, none),
