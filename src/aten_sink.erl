@@ -38,14 +38,7 @@ get_failure_probabilities() ->
 beat(DestNode) ->
     Dest = {?MODULE, DestNode},
     Msg = {hb, node()},
-    case erlang:send(Dest, {'$gen_cast', Msg}, [noconnect]) of
-        noconnect ->
-            % we don't want to hold up the messages for the other nodes
-            _ = spawn(fun () -> gen_server:cast(Dest, Msg) end),
-            ok;
-        ok ->
-            ok
-    end.
+    erlang:send(Dest, {'$gen_cast', Msg}, [noconnect, nosuspend]).
 
 %%%===================================================================
 %%% gen_server callbacks
