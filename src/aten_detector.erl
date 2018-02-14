@@ -86,9 +86,9 @@ handle_info(poll, #state{threshold = Th,
 handle_info({'DOWN', _Mon, process, Pid, _R},
             #state{watchers = Watchers0} = State) ->
     Watchers = maps:map(fun(_Node, Pids) ->
-        maps:remove(Pid, Pids)
-    end,
-    Watchers0),
+                            maps:remove(Pid, Pids)
+                        end,
+                        Watchers0),
     {noreply, State#state{watchers = Watchers}}.
 
 terminate(_Reason, _State) ->
@@ -106,7 +106,10 @@ notify(_Watchers, [], _Evt) ->
 notify(Watchers, [Node | Nodes], Evt) ->
     case Watchers of
         #{Node := Pids} ->
-            maps:map(fun(Pid, _) -> Pid ! {node_event, Node, Evt} end, Pids);
+            _ = maps:map(fun(Pid, _) ->
+                             Pid ! {node_event, Node, Evt}
+                         end,
+                         Pids);
         _ ->
             ok
     end,
