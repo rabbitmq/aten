@@ -52,13 +52,14 @@ failure_prob_at(At, #state{freshness = F,
                            factor = A,
                            samples = Samples}) ->
     T = At - F,
-    {TotNum, SmallNum} = array:foldl(fun(_, undefined, Acc) ->
-                                             Acc;
-                                        (_, S, {Tot, Smaller}) when S * A =< T ->
-                                             {Tot+1, Smaller+1};
-                                        (_, _S, {Tot, Smaller}) ->
-                                             {Tot+1, Smaller}
-                                     end, {0, 0}, Samples),
+    {TotNum, SmallNum} = array:foldl(
+                           fun(_, undefined, Acc) ->
+                                   Acc;
+                              (_, S, {Tot, Smaller}) when S * A =< T ->
+                                   {Tot+1, Smaller+1};
+                              (_, _S, {Tot, Smaller}) ->
+                                   {Tot+1, Smaller}
+                           end, {0, 0}, Samples),
     SmallNum / max(1, TotNum). % avoid div/0
 
 ts() ->
@@ -75,6 +76,10 @@ detect_test() ->
     S = lists:foldl(fun append/2, S0, [1, 5, 4, 10, 13, 20, 25]),
     ?assert(failure_prob_at(28, S) < 0.5),
     ?assert(failure_prob_at(40, S) == 1.0),
+    S1 = append(10, S0),
+    ?assertEqual(0.0, failure_prob_at(10, S1)),
+    % we cannot detect failures with only a single sample
+    % ?assert(failure_prob_at(100, S1) > 0.0),
     ok.
 
 -endif.
