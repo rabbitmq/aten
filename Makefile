@@ -20,6 +20,13 @@ PLT_APPS += eunit meck proper syntax_tools erts kernel stdlib common_test inets
 DIALYZER_OPTS += --src -r test
 EUNIT_OPTS = no_tty, {report, {eunit_progress, [colored, profile]}}
 
+RABBITMQ_UPSTREAM_FETCH_URL ?= https://github.com/rabbitmq/aten.git
+
 include erlang.mk
 
+.PHONY: show-upstream-git-fetch-url
+
 shell: app
+
+show-upstream-git-fetch-url:
+	@echo $(RABBITMQ_UPSTREAM_FETCH_URL)
