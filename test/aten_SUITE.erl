@@ -114,6 +114,7 @@ watchers_cleanup(_Config) ->
 
     Watcher ! stop,
 
+    timer:sleep(200),
     ok = slave:stop(Node),
 
     receive
