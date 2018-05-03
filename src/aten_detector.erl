@@ -107,28 +107,28 @@ notify(Watchers, [Node | Nodes], Evt) ->
     case Watchers of
         #{Node := Pids} ->
             _ = maps:map(fun(Pid, _) ->
-                             Pid ! {node_event, Node, Evt}
-                         end,
-                         Pids);
+                                 Pid ! {node_event, Node, Evt}
+                         end, Pids);
         _ ->
             ok
     end,
     notify(Watchers, Nodes, Evt).
 
 analyse_one(_Curr, undefined, _Thresh) ->
-    up; %??
-analyse_one(Curr, Prev, Thresh) when Prev < Thresh andalso Curr >= Thresh ->
+    up;
+analyse_one(Curr, Prev, Thresh)
+  when Prev < Thresh andalso Curr >= Thresh ->
     down;
-analyse_one(Curr, Prev, Thresh) when Prev >= Thresh andalso Curr < Thresh ->
+analyse_one(Curr, Prev, Thresh)
+  when Prev >= Thresh andalso Curr < Thresh ->
     up;
 analyse_one(_Curr, _Prev, _Thresh) ->
     no_change.
 
 analyse(Curr, Prev, Thresh) ->
     lists:foldl(fun ({Node, Sample}, {Up, Down} = Acc) ->
-                        case analyse_one(Sample,
-                                         maps:get(Node, Prev, undefined),
-                                         Thresh) of
+                        Last = maps:get(Node, Prev, undefined),
+                        case analyse_one(Sample, Last, Thresh) of
                             up ->
                                 {[Node | Up], Down};
                             down ->

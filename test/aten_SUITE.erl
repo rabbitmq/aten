@@ -47,12 +47,14 @@ detect_node_up_down_up(_Config) ->
     S1 = make_node_name(s1),
     {ok, S1} = start_slave(s1),
     ok = aten:register(S1),
-    ct:pal("Nodes ~p", [nodes()]),
+    ct:pal("Nodes ~w", [nodes()]),
     receive
         {node_event, S1, up} -> ok
     after 5000 ->
               exit(node_event_timeout)
     end,
+    %% give it enough time to generate more than one sample
+    timer:sleep(1000),
     ok = slave:stop(S1),
     receive
         {node_event, S1, down} -> ok

@@ -60,7 +60,8 @@ handle_call(get_failure_probabilities, From, State) ->
     {noreply, State}.
 
 handle_cast({hb, Node}, #state{data = Data0} = State) ->
-    Data = maps:update_with(Node, fun (S) -> aten_detect:sample_now(S) end,
+    Data = maps:update_with(Node,
+                            fun (S) -> aten_detect:sample_now(S) end,
                             aten_detect:init(), Data0),
     {noreply, State#state{data = Data}}.
 
