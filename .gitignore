@@ -16,8 +16,6 @@ ct.coverdata
 test/ct.cover.spec
 _build
 
-rabbitmq_rtopic_exchange.d
+aten.d
 *.plt
 *.d
-
-
