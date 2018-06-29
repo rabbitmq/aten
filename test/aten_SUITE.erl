@@ -12,7 +12,8 @@ all() ->
 
 all_tests() ->
     [
-     detect_node_up_down_up,
+     detect_node_partition,
+     detect_node_stop_start,
      unregister_does_not_detect,
      watchers_cleanup
     ].
@@ -38,12 +39,17 @@ init_per_testcase(_TestCase, Config) ->
          slave:stop(N),
          ok = aten:unregister(N)
      end || N <- nodes()],
+    meck:new(aten_sink, [passthrough]),
     application:stop(aten),
     application:start(aten),
     Config.
 
+end_per_testcase(_Case, _Config) ->
+    meck:unload(),
+    ok.
 
-detect_node_up_down_up(_Config) ->
+
+detect_node_partition(_Config) ->
     S1 = make_node_name(s1),
     {ok, S1} = start_slave(s1),
     ok = aten:register(S1),
@@ -55,12 +61,44 @@ detect_node_up_down_up(_Config) ->
     end,
     %% give it enough time to generate more than one sample
     timer:sleep(1000),
+    simulate_partition(S1),
+
+    receive
+        {node_event, S1, down} -> ok
+    after 5000 ->
+              exit(node_event_timeout)
+    end,
+    meck:unload(aten_sink),
+
+    receive
+        {node_event, S1, up} -> ok
+    after 5000 ->
+              exit(node_event_timeout)
+    end,
+    ok =  slave:stop(S1),
+    ok = aten:unregister(S1),
+    ok.
+
+detect_node_stop_start(_Config) ->
+    S1 = make_node_name(s1),
+    ok = aten:register(S1),
+    {ok, S1} = start_slave(s1),
+    ct:pal("Nodes ~w", [nodes()]),
+    receive
+        {node_event, S1, up} -> ok
+    after 5000 ->
+              exit(node_event_timeout)
+    end,
+    %% give it enough time to generate more than one sample
+    timer:sleep(1000),
+
     ok = slave:stop(S1),
     receive
         {node_event, S1, down} -> ok
     after 5000 ->
               exit(node_event_timeout)
     end,
+
     {ok, S1} = start_slave(s1),
     receive
         {node_event, S1, up} -> ok
@@ -150,6 +188,18 @@ spawn_watcher(Node, Pid) ->
         end
     end).
 
+
+%% simulates a partition from a remote node by dropping messages
+%% received from some specific node
+simulate_partition(Node) ->
+    meck:expect(aten_sink, handle_cast,
+                fun ({hb, N}, State) when N =:= Node ->
+                        %% drop this message
+                        ct:pal("Dropping hb from ~w~n", [Node]),
+                        {noreply, State};
+                    (Msg, State) ->
+                        aten_sink:handle_cast(Msg, State)
+                end).
 
 get_current_host() ->
     {ok, H} = inet:gethostname(),
