@@ -53,7 +53,7 @@ detect_node_partition(_Config) ->
     S1 = make_node_name(s1),
     {ok, S1} = start_slave(s1),
     ok = aten:register(S1),
-    ct:pal("Nodes ~w", [nodes()]),
+    ct:pal("Node ~w Nodes ~w", [node(), nodes()]),
     receive
         {node_event, S1, up} -> ok
     after 5000 ->
@@ -83,7 +83,7 @@ detect_node_stop_start(_Config) ->
     S1 = make_node_name(s1),
     ok = aten:register(S1),
     {ok, S1} = start_slave(s1),
-    ct:pal("Nodes ~w", [nodes()]),
+    ct:pal("Node ~w Nodes ~w", [node(), nodes()]),
     receive
         {node_event, S1, up} -> ok
     after 5000 ->
@@ -113,7 +113,7 @@ unregister_does_not_detect(_Config) ->
     S1 = make_node_name(s1),
     ok = aten:register(S1),
     {ok, S1} = start_slave(s1),
-    ct:pal("Nodes ~p", [nodes()]),
+    ct:pal("Node ~w Nodes ~w", [node(), nodes()]),
     receive
         {node_event, S1, up} -> ok
     after 5000 ->
@@ -134,6 +134,7 @@ watchers_cleanup(_Config) ->
     Watcher = spawn_watcher(Node, Self),
     ok = aten:register(Node),
     {ok, Node} = start_slave(s1),
+    ct:pal("Node ~w Nodes ~w", [node(), nodes()]),
     receive
         {watcher_node_up, Node} -> ok
     after 5000 ->
@@ -202,19 +203,23 @@ simulate_partition(Node) ->
                 end).
 
 get_current_host() ->
-    {ok, H} = inet:gethostname(),
-    list_to_atom(H).
+    N = atom_to_list(node()),
+    {ok, list_to_atom(after_char($@, N))}.
 
 make_node_name(N) ->
-    {ok, H} = inet:gethostname(),
-    list_to_atom(lists:flatten(io_lib:format("~s@~s", [N, H]))).
+    {ok, Host} = get_current_host(),
+    list_to_atom(lists:flatten(io_lib:format("~s@~s", [N, Host]))).
 
 search_paths() ->
     Ld = code:lib_dir(),
     lists:filter(fun (P) -> string:prefix(P, Ld) =:= nomatch end,
                  code:get_path()).
 start_slave(N) ->
-    Host = get_current_host(),
+    {ok, Host} = get_current_host(),
     Pa = string:join(["-pa" | search_paths()] ++ ["-s aten"], " "),
     ct:pal("starting slave node with ~s~n", [Pa]),
     slave:start_link(Host, N, Pa).
+
+after_char(_, []) -> [];
+after_char(Char, [Char|Rest]) -> Rest;
+after_char(Char, [_|Rest]) -> after_char(Char, Rest).
