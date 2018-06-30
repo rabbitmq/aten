@@ -19,12 +19,10 @@
 
 -opaque state() :: #state{}.
 
--export_type([state/0
-              ]).
+-export_type([state/0]).
 
 init() ->
     #state{}.
-
 
 -spec sample_now(state()) -> state().
 sample_now(State) ->
