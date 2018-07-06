@@ -15,13 +15,11 @@
          terminate/2,
          code_change/3]).
 
--record(state, {data = #{} :: #{node() => aten_detect:state()}}).
+-record(state, {data = #{} :: #{node() => aten_detect:state()},
+                monitors = #{} :: #{node() => boolean()}}).
 -type state() :: #state{}.
 
-% -define(INTERVAL, 100).
-
-
-%%% aten_emitter - emits heartbeats to all connected nodes periodically
+%%% aten_sink
 
 %%%===================================================================
 %%% API functions
@@ -59,12 +57,20 @@ handle_call(get_failure_probabilities, From, State) ->
               end),
     {noreply, State}.
 
-handle_cast({hb, Node}, #state{data = Data0} = State) ->
+handle_cast({hb, Node}, #state{data = Data0, monitors = Monitors0} = State) ->
+    Monitors = maybe_monitor_node(Node, Monitors0),
     Data = maps:update_with(Node,
                             fun (S) -> aten_detect:sample_now(S) end,
                             aten_detect:init(), Data0),
-    {noreply, State#state{data = Data}}.
+    {noreply, State#state{data = Data, monitors = Monitors}}.
 
+handle_info({nodedown, Node}, #state{data = Data0, monitors = Monitors0} = State) ->
+    % Note: do NOT unregister the node monitor here - it is unnecessary
+    % and will actually end up trying to re-connect to the node
+    % resulting in an infinite number of nodedown messages
+    Data = maps:remove(Node, Data0),
+    Monitors = maps:remove(Node, Monitors0),
+    {noreply, State#state{data = Data, monitors = Monitors}};
 handle_info(_Msg, State) ->
     {noreply, State}.
 
@@ -77,6 +83,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+maybe_monitor_node(Node, Monitors) ->
+    IsMonitored = maps:get(Node, Monitors, false),
+    case IsMonitored of
+        true -> Monitors;
+        false ->
+            Monitors#{Node => erlang:monitor_node(Node, true)}
+    end.
 
 get_probabilities(Data) ->
     maps:map(fun (_Key, Value) ->

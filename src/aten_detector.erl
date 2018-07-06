@@ -67,8 +67,9 @@ handle_cast({register, Node, Pid}, #state{watchers = Watchers0} = State) ->
     {noreply, State#state{watchers = Watchers}};
 handle_cast({unregister, Node, Pid}, #state{watchers = Watchers0} = State) ->
     Watchers = case Watchers0 of
-                   #{Node := Pids} ->
-                       Watchers0#{Node => maps:remove(Pid, Pids)};
+                   #{Node := Pids0} ->
+                       Pids1 = maps:remove(Pid, Pids0),
+                       maps:update(Node, Pids1, Watchers0);
                    _ ->
                        Watchers0
                end,
@@ -85,8 +86,10 @@ handle_info(poll, #state{threshold = Th,
     {noreply, State#state{node_states = Probs}};
 handle_info({'DOWN', _Mon, process, Pid, _R},
             #state{watchers = Watchers0} = State) ->
-    Watchers = maps:map(fun(_Node, Pids) ->
-                            maps:remove(Pid, Pids)
+    Watchers = maps:map(fun(_Node, Pids0) ->
+                            % Note: this returns the new map as required by
+                            % maps:map/2
+                            maps:remove(Pid, Pids0)
                         end,
                         Watchers0),
     {noreply, State#state{watchers = Watchers}}.
@@ -126,6 +129,14 @@ analyse_one(_Curr, _Prev, _Thresh) ->
     no_change.
 
 analyse(Curr, Prev, Thresh) ->
+    Down0 = maps:fold(fun (N, _S, Acc) ->
+                              case maps:get(N, Curr, undefined) of
+                                  undefined ->
+                                      [N | Acc];
+                                  _ ->
+                                      Acc
+                              end
+                      end, [], Prev),
     lists:foldl(fun ({Node, Sample}, {Up, Down} = Acc) ->
                         Last = maps:get(Node, Prev, undefined),
                         case analyse_one(Sample, Last, Thresh) of
@@ -136,8 +147,7 @@ analyse(Curr, Prev, Thresh) ->
                             no_change ->
                                 Acc
                         end
-                end, {[], []}, maps:to_list(Curr)).
-
+                end, {[], Down0}, maps:to_list(Curr)).
 
 set_timer(State) ->
     TRef = erlang:send_after(State#state.interval, self(), poll),
@@ -159,16 +169,19 @@ is_connected(Node) ->
 -include_lib("eunit/include/eunit.hrl").
 
 analyse_test() ->
-    Curr = #{n1 => 1.0,% down
+    Curr = #{n1 => 1.0, % down
              n2 => 0.1, % up
-             n3 => 0.5 % no change
+             n3 => 0.5  % no change
             },
-    Prev = #{n1 => 0.2,% down
+    Prev = #{n1 => 0.2, % down
              n2 => 1.0, % up
-             n3 => 0.4
+             n3 => 0.4,
+             n4 => 0.3  % down (not in Curr)
             },
 
-    {[n2], [n1]} = analyse(Curr, Prev, 0.98),
+    Want = {[n2], [n1,n4]},
+    Got = analyse(Curr, Prev, 0.98),
+    ?assertEqual(Want, Got),
     ok.
 
 analyse_one_test() ->

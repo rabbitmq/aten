@@ -48,7 +48,6 @@ end_per_testcase(_Case, _Config) ->
     meck:unload(),
     ok.
 
-
 detect_node_partition(_Config) ->
     S1 = make_node_name(s1),
     {ok, S1} = start_slave(s1),
@@ -57,7 +56,7 @@ detect_node_partition(_Config) ->
     receive
         {node_event, S1, up} -> ok
     after 5000 ->
-              exit(node_event_timeout)
+        exit(node_event_timeout)
     end,
     %% give it enough time to generate more than one sample
     timer:sleep(1000),
@@ -66,16 +65,16 @@ detect_node_partition(_Config) ->
     receive
         {node_event, S1, down} -> ok
     after 5000 ->
-              exit(node_event_timeout)
+        exit(node_event_timeout)
     end,
     meck:unload(aten_sink),
 
     receive
         {node_event, S1, up} -> ok
     after 5000 ->
-              exit(node_event_timeout)
+        exit(node_event_timeout)
     end,
-    ok =  slave:stop(S1),
+    ok = slave:stop(S1),
     ok = aten:unregister(S1),
     ok.
 
@@ -87,8 +86,9 @@ detect_node_stop_start(_Config) ->
     receive
         {node_event, S1, up} -> ok
     after 5000 ->
-              exit(node_event_timeout)
+        exit(node_event_timeout)
     end,
+
     %% give it enough time to generate more than one sample
     timer:sleep(1000),
 
@@ -96,16 +96,16 @@ detect_node_stop_start(_Config) ->
     receive
         {node_event, S1, down} -> ok
     after 5000 ->
-              exit(node_event_timeout)
+        exit(node_event_timeout)
     end,
 
     {ok, S1} = start_slave(s1),
     receive
         {node_event, S1, up} -> ok
     after 5000 ->
-              exit(node_event_timeout)
+        exit(node_event_timeout)
     end,
-    ok =  slave:stop(S1),
+    ok = slave:stop(S1),
     ok = aten:unregister(S1),
     ok.
 
@@ -117,14 +117,14 @@ unregister_does_not_detect(_Config) ->
     receive
         {node_event, S1, up} -> ok
     after 5000 ->
-              exit(node_event_timeout)
+        exit(node_event_timeout)
     end,
     ok = aten:unregister(S1),
     receive
         {node_event, S1, Evt} ->
             exit({unexpected_node_event, S1, Evt})
     after 5000 ->
-              ok
+        ok
     end,
     ok.
 
@@ -173,6 +173,11 @@ watchers_cleanup(_Config) ->
     #{Node := Pids} = Watchers1,
     #{Node := #{Self := _}} = Watchers1,
     none = maps:get(Watcher, Pids, none),
+
+    State2 = sys:get_state(aten_sink),
+    NodeMap = element(2, State2),
+    none = maps:get(Node, NodeMap, none),
+
     ok = aten:unregister(Node).
 
 spawn_watcher(Node, Pid) ->

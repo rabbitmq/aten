@@ -10,7 +10,7 @@ Use
 ---
 
     % start the aten application if not part of a release
-    ok = aten:start(),
+    {ok, _Apps} = aten:start(),
     % register interest in status changes for a node
     ok = aten:register(node1@host),
     % receive status change events
