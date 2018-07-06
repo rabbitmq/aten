@@ -16,11 +16,13 @@ addons:
         key_url: https://packages.erlang-solutions.com/ubuntu/erlang_solutions.asc
     packages:
       - awscli
+      - make
       - elixir=1.6.6-2
       - erlang-common-test
       - erlang-dev
       - erlang-dialyzer
       - erlang-eunit
+      - erlang-proper
 
 cache:
   apt: true
