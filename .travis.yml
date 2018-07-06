@@ -16,7 +16,6 @@ addons:
         key_url: https://packages.erlang-solutions.com/ubuntu/erlang_solutions.asc
     packages:
       - awscli
-      - make
       - elixir=1.6.6-2
       - erlang-common-test
       - erlang-dev
@@ -34,6 +33,7 @@ env:
 before_script:
   # Make sure we use Elixir from Erlang Solutions and not kiex.
   - |
+    make --version
     echo YES | kiex implode
     elixir --version
     elixir --version | grep -q 'Elixir 1.6.6'
