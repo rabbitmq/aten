@@ -63,7 +63,6 @@ handle_cast({register, Node, Pid}, #state{watchers = Watchers0} = State) ->
                 #{} -> Pids0#{Pid => erlang:monitor(process, Pid)}
             end,
     Watchers = maps:put(Node, Pids, Watchers0),
-    ok = try_connect(Node),
     {noreply, State#state{watchers = Watchers}};
 handle_cast({unregister, Node, Pid}, #state{watchers = Watchers0} = State) ->
     Watchers = case Watchers0 of
@@ -152,17 +151,6 @@ analyse(Curr, Prev, Thresh) ->
 set_timer(State) ->
     TRef = erlang:send_after(State#state.interval, self(), poll),
     State#state{tref = TRef}.
-
-try_connect(Node) ->
-    case is_connected(Node) of
-        true -> ok;
-        false ->
-            _ = spawn(fun () -> net_kernel:connect_node(Node) end),
-            ok
-    end.
-
-is_connected(Node) ->
-    lists:member(Node, nodes()).
 
 
 -ifdef(TEST).
