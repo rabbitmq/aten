@@ -12,4 +12,4 @@ cache:
 otp_release:
   - "21.0"
 
-script: bash ci/travis.sh
+script: ./ci/travis.sh
