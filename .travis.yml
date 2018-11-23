@@ -13,4 +13,5 @@ otp_release:
   - "21.0"
 
 script:
+  - epmd -deamon
   - rebar3 do eunit, ct, xref, dialyzer
