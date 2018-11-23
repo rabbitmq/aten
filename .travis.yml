@@ -12,4 +12,5 @@ cache:
 otp_release:
   - "21.0"
 
-script: ./ci/travis.sh
+script:
+  - make check
