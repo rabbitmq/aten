@@ -222,8 +222,8 @@ search_paths() ->
 start_slave(N) ->
     {ok, Host} = get_current_host(),
     Pa = string:join(["-pa" | search_paths()] ++ ["-s aten"], " "),
-    ct:pal("starting slave node with ~s~n", [Pa]),
-    slave:start_link(Host, N, Pa).
+    ct:pal("starting node ~w with ~s~n", [N, Pa]),
+    ct_slave:start(Host, N, [{erl_flags, Pa}]).
 
 after_char(_, []) -> [];
 after_char(Char, [Char|Rest]) -> Rest;

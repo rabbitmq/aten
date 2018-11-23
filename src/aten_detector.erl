@@ -110,7 +110,8 @@ notify(Watchers, [Node | Nodes], Evt) ->
         #{Node := Pids} ->
             _ = maps:map(fun(Pid, _) ->
                                  Pid ! {node_event, Node, Evt}
-                         end, Pids);
+                         end, Pids),
+            ok;
         _ ->
             ok
     end,
