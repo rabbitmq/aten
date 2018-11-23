@@ -12,5 +12,4 @@ cache:
 otp_release:
   - "21.0"
 
-script:
-  - rebar3 do eunit, ct, xref, dialyzer
+script: bash ci/travis.sh
