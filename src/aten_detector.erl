@@ -56,11 +56,27 @@ handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
 
-handle_cast({register, Node, Pid}, #state{watchers = Watchers0} = State) ->
+handle_cast({register, Node, Pid},
+            #state{watchers = Watchers0,
+                   node_states = Curr,
+                   threshold = Thresh} = State) ->
     Pids0 = maps:get(Node, Watchers0, #{}),
     Pids =  case Pids0 of
-                #{Pid := _Mon} -> Pids0;
-                #{} -> Pids0#{Pid => erlang:monitor(process, Pid)}
+                #{Pid := _Mon} ->
+                    Pids0;
+                #{} ->
+                    %% this is a new registration, emit the current state
+                    case Curr of
+                        #{Node := Last} when Last < Thresh ->
+                            %% the node is known and active
+                            Pid ! {node_event, Node, up},
+                            ok;
+                        _ ->
+                            %% otherwise it must be down
+                            Pid ! {node_event, Node, down},
+                            ok
+                    end,
+                    Pids0#{Pid => erlang:monitor(process, Pid)}
             end,
     Watchers = maps:put(Node, Pids, Watchers0),
     {noreply, State#state{watchers = Watchers}};
