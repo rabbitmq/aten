@@ -78,9 +78,8 @@ handle_cast({register, Node, Pid},
                             ok;
 
                         _ ->
-                            case lists:member(Node, nodes()) of
+                            case net_kernel:connect_node(Node) of
                                 false ->
-                                    %% otherwise it must be down
                                     Pid ! {node_event, Node, down},
                                     ok;
 
