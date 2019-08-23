@@ -69,23 +69,19 @@ handle_cast({register, Node, Pid},
                     case Curr of
                         #{Node := Last} when Last < Thresh ->
                             %% the node is known and active
-                            Pid ! {node_event, Node, up},
-                            ok;
+                            ok = notify(Pid, Node, up);
 
                         #{Node := Last} when Last >= Thresh ->
                             %% the node is known but inactive
-                            Pid ! {node_event, Node, down},
-                            ok;
+                            ok = notify(Pid, Node, down);
 
                         _ ->
                             case net_kernel:connect_node(Node) of
                                 false ->
-                                    Pid ! {node_event, Node, down},
-                                    ok;
+                                    ok = notify(Pid, Node, down);
 
                                 true ->
-                                    Pid ! {node_event, Node, up},
-                                    ok
+                                    ok = notify(Pid, Node, up)
                             end
                     end,
                     Pids0#{Pid => erlang:monitor(process, Pid)}
@@ -131,6 +127,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+notify(Watcher, Node, Evt) when is_pid(Watcher) and is_atom(Node) ->
+    Watcher ! {node_event, Node, Evt},
+    ok;
 notify(_Watchers, [], _Evt) ->
     ok;
 notify(Watchers, [Node | Nodes], Evt) ->
