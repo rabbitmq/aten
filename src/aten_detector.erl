@@ -71,10 +71,23 @@ handle_cast({register, Node, Pid},
                             %% the node is known and active
                             Pid ! {node_event, Node, up},
                             ok;
-                        _ ->
-                            %% otherwise it must be down
+
+                        #{Node := Last} when Last >= Thresh ->
+                            %% the node is known but inactive
                             Pid ! {node_event, Node, down},
-                            ok
+                            ok;
+
+                        _ ->
+                            case lists:member(Node, nodes()) of
+                                false ->
+                                    %% otherwise it must be down
+                                    Pid ! {node_event, Node, down},
+                                    ok;
+
+                                true ->
+                                    Pid ! {node_event, Node, up},
+                                    ok
+                            end
                     end,
                     Pids0#{Pid => erlang:monitor(process, Pid)}
             end,
