@@ -76,7 +76,7 @@ handle_cast({register, Node, Pid},
                             ok = notify(Pid, Node, down);
 
                         _ ->
-                            case net_kernel:connect_node(Node) of
+                            case lists:member(Node, nodes()) of
                                 false ->
                                     ok = notify(Pid, Node, down);
 
