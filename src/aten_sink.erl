@@ -59,9 +59,12 @@ handle_call(get_failure_probabilities, From, State) ->
 
 handle_cast({hb, Node}, #state{data = Data0, monitors = Monitors0} = State) ->
     Monitors = maybe_monitor_node(Node, Monitors0),
-    Data = maps:update_with(Node,
-                            fun (S) -> aten_detect:sample_now(S) end,
-                            aten_detect:init(), Data0),
+    Data = case Data0 of
+               #{Node := S} ->
+                   Data0#{Node => aten_detect:sample_now(S)};
+               _ ->
+                   Data0#{Node => aten_detect:init()}
+           end,
     {noreply, State#state{data = Data, monitors = Monitors}}.
 
 handle_info({nodedown, Node}, #state{data = Data0, monitors = Monitors0} = State) ->
