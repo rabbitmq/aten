@@ -10,7 +10,8 @@ cache:
   apt: true
 
 otp_release:
-  - "21.0"
+  - "22.2.8"
+  - "21.3"
 
 script:
   - make check
