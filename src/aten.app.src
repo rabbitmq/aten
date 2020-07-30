@@ -10,5 +10,6 @@
               {applications,[kernel,stdlib,sasl,crypto]},
               {mod,{aten_app,[]}},
               {env,[{poll_interval,1000},
+                    {scaling_factor, 1.5},
                     {heartbeat_interval,100},
                     {detection_threshold,0.99}]}]}.

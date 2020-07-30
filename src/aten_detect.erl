@@ -7,7 +7,7 @@
 -module(aten_detect).
 
 -export([
-         init/0,
+         init/1,
          sample_now/1,
          get_failure_probability/1
          ]).
@@ -27,8 +27,8 @@
 
 -export_type([state/0]).
 
-init() ->
-    #state{}.
+init(Factor) ->
+    #state{factor = Factor}.
 
 -spec sample_now(state()) -> state().
 sample_now(State) ->

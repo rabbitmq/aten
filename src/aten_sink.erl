@@ -24,7 +24,8 @@
          code_change/3]).
 
 -record(state, {data = #{} :: #{node() => aten_detect:state()},
-                monitors = #{} :: #{node() => boolean()}}).
+                monitors = #{} :: #{node() => boolean()},
+                factor = 1.5 :: float()}).
 -type state() :: #state{}.
 
 %%% aten_sink
@@ -53,7 +54,8 @@ beat(DestNode) ->
 
 -spec init(term()) -> {ok, state()}.
 init([]) ->
-    {ok, #state{}}.
+    F = application:get_env(aten, scaling_factor, 1.5),
+    {ok, #state{factor = F}}.
 
 handle_call(get_failure_probabilities, From, State) ->
     Data = State#state.data,
@@ -69,13 +71,15 @@ handle_call(get_failure_probabilities, From, State) ->
               end),
     {noreply, State}.
 
-handle_cast({hb, Node}, #state{data = Data0, monitors = Monitors0} = State) ->
+handle_cast({hb, Node}, #state{data = Data0,
+                               monitors = Monitors0,
+                               factor = Factor} = State) ->
     Monitors = maybe_monitor_node(Node, Monitors0),
     Data = case Data0 of
                #{Node := S} ->
                    Data0#{Node => aten_detect:sample_now(S)};
                _ ->
-                   Data0#{Node => aten_detect:init()}
+                   Data0#{Node => aten_detect:init(Factor)}
            end,
     {noreply, State#state{data = Data, monitors = Monitors}}.
 
