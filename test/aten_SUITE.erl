@@ -5,6 +5,10 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
+-define(POLLINT, 1000).
+-define(HBINT, 250).
+-define(SCALE, 1.5).
+
 all() ->
     [
      {group, tests}
@@ -12,6 +16,7 @@ all() ->
 
 all_tests() ->
     [
+     distribution_flood,
      detect_node_partition,
      detect_node_stop_start,
      unregister_does_not_detect,
@@ -27,7 +32,9 @@ groups() ->
 
 init_per_group(_, Config) ->
     _ = application:load(aten),
-    ok = application:set_env(aten, poll_interval, 500),
+    ok = application:set_env(aten, poll_interval, ?POLLINT),
+    ok = application:set_env(aten, heartbeat_interval, ?HBINT),
+    ok = application:set_env(aten, scaling_factor, ?SCALE),
     application:ensure_all_started(aten),
     Config.
 
@@ -50,6 +57,77 @@ end_per_testcase(_Case, _Config) ->
     meck:unload(),
     ok.
 
+echo_proc() ->
+    receive
+        {P, Data} ->
+            P ! Data,
+            echo_proc();
+        stop ->
+            ok
+    end.
+
+
+sink_proc() ->
+    receive
+        _ ->
+            sink_proc()
+    end.
+
+load_proc(EPid, SPid, Data) ->
+    EPid ! {SPid, Data},
+    load_proc(EPid, SPid, Data).
+
+distribution_flood(_Config) ->
+    S1 = make_node_name(?FUNCTION_NAME),
+    ok = aten:register(S1),
+    receive
+        {node_event, S1, down} -> ok
+    after 5000 ->
+              exit(node_event_timeout)
+    end,
+    {ok, S1} = start_slave(?FUNCTION_NAME),
+    ct:pal("Node ~w Nodes ~w", [node(), nodes()]),
+    receive
+        {node_event, S1, up} -> ok
+    after 5000 ->
+              exit(node_event_timeout)
+    end,
+    timer:sleep(30000),
+    ct:pal("PRE nosuspends ~b",
+           [gen_server:call({aten_emitter, S1}, dummy)]),
+
+    %% generate some load on the distribution channel
+    ct:pal("flooding..."),
+    EPid = spawn(S1, fun echo_proc/0),
+    SPid = spawn(fun sink_proc/0),
+    Data = crypto:strong_rand_bytes(8024 * 2),
+    LPid = spawn(fun () -> load_proc(EPid, SPid, Data) end),
+    receive
+        {node_event, S1, down} ->
+            ct:pal("DOWN!! nosuspends ~b",
+                   [gen_server:call({aten_emitter, S1}, dummy)]),
+            % %% check if it changes
+            receive
+                {node_event, S1, up} ->
+                    ct:pal("UP again!"),
+                    ok
+            after ?POLLINT + 20 ->
+                      flush(),
+                      ct_slave:stop(S1),
+                      exit(unexpected_down)
+            end
+    after 60000 ->
+              ct:pal("NO DOWN nosuspends ~b", [gen_server:call({aten_emitter, S1}, dummy)]),
+              ok
+    end,
+
+    exit(LPid, normal),
+    exit(SPid, normal),
+    exit(EPid, normal),
+    ct_slave:stop(S1),
+    ok.
+
+
 detect_node_partition(_Config) ->
     S1 = make_node_name(?FUNCTION_NAME),
     ok = aten:register(S1),
@@ -66,7 +144,7 @@ detect_node_partition(_Config) ->
               exit(node_event_timeout)
     end,
     %% give it enough time to generate more than one sample
-    timer:sleep(1000),
+    timer:sleep(2000),
     simulate_partition(S1),
 
     receive
@@ -160,15 +238,21 @@ register_detects_down(_Config) ->
     receive
         {node_event, S1, down} -> ok
     after 5000 ->
-        exit(node_event_timeout)
+              exit(node_event_timeout)
     end,
     {ok, S1} = start_slave(s1),
-    timer:sleep(500),
+    receive
+        {node_event, S1, up} -> ok
+    after 5000 ->
+              flush(),
+              exit(node_event_timeout_2)
+    end,
     simulate_partition(S1),
     receive
         {node_event, S1, down} -> ok
     after 5000 ->
-        exit(node_event_timeout)
+              flush(),
+              exit(node_event_timeout_3)
     end,
     ok = aten:unregister(S1),
     %% re-register should detect down
@@ -176,9 +260,11 @@ register_detects_down(_Config) ->
     receive
         {node_event, S1, down} -> ok
     after 5000 ->
-        exit(node_event_timeout)
+              exit(node_event_timeout_4)
     end,
     ok = aten:unregister(S1),
+
+    ct_slave:stop(S1),
     ok.
 
 watchers_cleanup(_Config) ->
@@ -285,9 +371,15 @@ search_paths() ->
                  code:get_path()).
 start_slave(N) ->
     {ok, Host} = get_current_host(),
-    Pa = string:join(["-pa" | search_paths()] ++ ["-s aten"], " "),
+    Pa = string:join(["-pa" | search_paths()], " "),
     ct:pal("starting node ~w with ~s~n", [N, Pa]),
-    ct_slave:start(Host, N, [{erl_flags, Pa}]).
+    {ok, S} = ct_slave:start(Host, N, [{erl_flags, Pa}]),
+    _ = rpc:call(S, application, load, [aten]),
+    rpc:call(S, application, set_env, [aten, poll_interval, ?POLLINT]),
+    rpc:call(S, application, set_env, [aten, heartbeat_interval, ?HBINT]),
+    rpc:call(S, application, set_env, [aten, scaling_factor, ?SCALE]),
+    rpc:call(S, application, ensure_all_started, [aten]),
+    {ok, S}.
 
 after_char(_, []) -> [];
 after_char(Char, [Char|Rest]) -> Rest;
@@ -298,6 +390,6 @@ flush() ->
     receive M ->
                 ct:pal("flushed ~w~n", [M]),
                 flush()
-    after 100 ->
+    after ?POLLINT ->
               ok
     end.

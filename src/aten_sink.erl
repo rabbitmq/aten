@@ -13,7 +13,8 @@
 %% API functions
 -export([start_link/0,
          get_failure_probabilities/0,
-         beat/1]).
+         beat/1,
+         beat_blocking/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -41,11 +42,17 @@ start_link() ->
 get_failure_probabilities() ->
     gen_server:call(?MODULE, get_failure_probabilities).
 
--spec beat(node()) -> ok.
+-spec beat(node()) -> ok | noconnect | nosuspend.
 beat(DestNode) ->
     Dest = {?MODULE, DestNode},
     Msg = {hb, node()},
-    _ = erlang:send(Dest, {'$gen_cast', Msg}, [noconnect, nosuspend]),
+    erlang:send(Dest, {'$gen_cast', Msg}, [noconnect, nosuspend]).
+
+-spec beat_blocking(node()) -> ok.
+beat_blocking(DestNode) ->
+    Dest = {?MODULE, DestNode},
+    Msg = {hb, node()},
+    _ = gen_server:cast(Dest, Msg),
     ok.
 
 %%%===================================================================

@@ -22,7 +22,12 @@
 -define(INTERVAL, 100).
 
 -record(state, {tref :: reference() | undefined,
-                interval = ?INTERVAL :: non_neg_integer() }).
+                counters :: counters:counters_ref(),
+                interval = ?INTERVAL :: non_neg_integer(),
+                %% nodes for which a hearbeat is currently being sent in a separate
+                %% process without nosuspend
+                blocked = [] :: [node()]}).
+
 -type state() :: #state{}.
 
 
@@ -43,19 +48,40 @@ start_link() ->
 
 -spec init(term()) -> {ok, state()}.
 init([]) ->
-    Interval =  application:get_env(aten, heartbeat_interval, ?INTERVAL),
-    {ok, set_timer(#state{interval = Interval})}.
+    Interval = application:get_env(aten, heartbeat_interval, ?INTERVAL),
+    {ok, update_state(#state{interval = Interval,
+                             counters = counters:new(1, [])},
+                      [])}.
 
 handle_call(_Request, _From, State) ->
-    Reply = ok,
+    Reply = counters:get(State#state.counters, 1),
     {reply, Reply, State}.
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info(emit_heartbeats, State) ->
-    _ = [ok = aten_sink:beat(Node) || Node <- nodes()],
-    {noreply, set_timer(State)}.
+handle_info(emit_heartbeats,
+            #state{counters = Cnt,
+                   blocked = Blocked0} = State) ->
+    Blocked = lists:foldl(
+                fun (Node, Acc) ->
+                        case aten_sink:beat(Node) of
+                            nosuspend ->
+                                counters:add(Cnt, 1, 1),
+                                Self = self(),
+                                spawn(fun () ->
+                                              ok = aten_sink:beat_blocking(Node),
+                                              Self ! {unblock, Node},
+                                              ok
+                                      end),
+                                [Node | Acc];
+                            _ ->
+                                Acc
+                        end
+                end, Blocked0, nodes() -- Blocked0),
+    {noreply, update_state(State, Blocked)};
+handle_info({unblock, Node}, #state{blocked = Blocked} = State) ->
+    {noreply, State#state{blocked = lists:delete(Node, Blocked)}}.
 
 terminate(_Reason, _State) ->
     ok.
@@ -66,6 +92,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-set_timer(State) ->
+update_state(State, Blocked) ->
     TRef = erlang:send_after(State#state.interval, self(), emit_heartbeats),
-    State#state{tref = TRef}.
+    State#state{tref = TRef,
+                blocked = Blocked}.
