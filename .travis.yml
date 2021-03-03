@@ -1,6 +1,9 @@
 # vim:sw=2:et:
 
+os: linux
+dist: bionic
 sudo: false
+
 language: erlang
 notifications:
   email:
@@ -8,8 +11,11 @@ notifications:
     on_failure: always
 
 otp_release:
-  - "22.2.8"
-  - "21.3.8"
+otp_release:
+  - "23.0.2"
+  - "22.3.4"
 
 script:
+  - make xref
   - make check
+  - make dialyze
