@@ -351,7 +351,7 @@ simulate_partition(Node) ->
     meck:expect(aten_sink, handle_cast,
                 fun ({hb, N}, State) when N =:= Node ->
                         %% drop this message
-                        ct:pal("Dropping hb from ~w~n", [Node]),
+                        ct:pal("Dropping hb from ~w", [Node]),
                         {noreply, State};
                     (Msg, State) ->
                         aten_sink:handle_cast(Msg, State)
@@ -372,7 +372,7 @@ search_paths() ->
 start_slave(N) ->
     {ok, Host} = get_current_host(),
     Pa = string:join(["-pa" | search_paths()], " "),
-    ct:pal("starting node ~w with ~s~n", [N, Pa]),
+    ct:pal("starting node ~w with ~s", [N, Pa]),
     {ok, S} = ct_slave:start(Host, N, [{erl_flags, Pa}]),
     _ = rpc:call(S, application, load, [aten]),
     rpc:call(S, application, set_env, [aten, poll_interval, ?POLLINT]),
@@ -388,7 +388,7 @@ after_char(Char, [_|Rest]) -> after_char(Char, Rest).
 
 flush() ->
     receive M ->
-                ct:pal("flushed ~w~n", [M]),
+                ct:pal("flushed ~w", [M]),
                 flush()
     after ?POLLINT ->
               ok
