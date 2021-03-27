@@ -1,0 +1,27 @@
+name: Test
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        otp: [23.2]
+    steps:
+    - name: CHECKOUT
+      uses: actions/checkout@v2
+    - name: CONFIGURE ERLANG
+      uses: gleam-lang/setup-erlang@v1.1.2
+      with:
+        otp-version: ${{ matrix.otp }}
+    - name: Xref
+      run: make xref
+    - name: Deps
+      run: make test-deps
+    - name: Dialyze
+      run: make dialyze
+    - name: Build tests
+      run: make test-build
+    - name: EUnit
+      run: make eunit
+    - name: aten_SUITE
+      run: make ct-aten

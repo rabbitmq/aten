@@ -7,12 +7,14 @@ for distributed Erlang.
 
 Aten is an essential dependency of [Ra](https://github.com/rabbitmq/ra).
 
-
 ## Project Maturity
 
 `aten` is a reasonably mature project that has been used in production
 for a few years. Breaking public API changes are unlikely.
 
+## Build Status
+
+![Actions](https://github.com/rabbitmq/aten/actions/workflows/tests.yml/badge.svg)
 
 ## Use
 
@@ -49,4 +51,4 @@ rebar3 compile
 `aten` is [dual-licensed](./LICENSE) under the Mozilla Public License 2.0
 and the Apache Public License 2.0.
 
-(c) 2017-2020 VMware, Inc or its affiliates. 
+(c) 2017-2021 VMware, Inc or its affiliates.
