@@ -70,7 +70,7 @@ handle_cast({register, Node, Pid},
     Pids =  case Pids0 of
                 #{Pid := _Mon} ->
                     Pids0;
-                #{} ->
+                _ ->
                     %% this is a new registration, emit the current state
                     case Curr of
                         #{Node := Last} when Last < Thresh ->
@@ -86,11 +86,17 @@ handle_cast({register, Node, Pid},
             end,
     Watchers = maps:put(Node, Pids, Watchers0),
     {noreply, State#state{watchers = Watchers}};
-handle_cast({unregister, Node, Pid}, #state{watchers = Watchers0} = State) ->
+handle_cast({unregister, Node, Pid},
+            #state{watchers = Watchers0} = State) ->
     Watchers = case Watchers0 of
                    #{Node := Pids0} ->
-                       Pids1 = maps:remove(Pid, Pids0),
-                       maps:update(Node, Pids1, Watchers0);
+                       case maps:take(Pid, Pids0) of
+                           error ->
+                               Watchers0;
+                           {Ref, Pids} ->
+                               erlang:demonitor(Ref),
+                               maps:update(Node, Pids, Watchers0)
+                       end;
                    _ ->
                        Watchers0
                end,

@@ -45,8 +45,8 @@ end_per_group(_, Config) ->
 init_per_testcase(_TestCase, Config) ->
     % try to stop all slaves
     [begin
-         slave:stop(N),
-         ok = aten:unregister(N)
+         ok = aten:unregister(N),
+         slave:stop(N)
      end || N <- nodes()],
     meck:new(aten_sink, [passthrough]),
     application:stop(aten),
@@ -54,6 +54,10 @@ init_per_testcase(_TestCase, Config) ->
     Config.
 
 end_per_testcase(_Case, _Config) ->
+    [begin
+         ok = aten:unregister(N),
+         slave:stop(N)
+     end || N <- nodes()],
     meck:unload(),
     ok.
 
@@ -166,9 +170,9 @@ detect_node_partition(_Config) ->
     ok.
 
 detect_node_stop_start(_Config) ->
-    S1 = make_node_name(s1),
+    S1 = make_node_name(?FUNCTION_NAME),
     ok = aten:register(S1),
-    {ok, S1} = start_slave(s1),
+    {ok, S1} = start_slave(?FUNCTION_NAME),
     ct:pal("Node ~w Nodes ~w", [node(), nodes()]),
     receive
         {node_event, S1, up} -> ok
@@ -186,7 +190,7 @@ detect_node_stop_start(_Config) ->
         exit(node_event_timeout)
     end,
 
-    {ok, S1} = start_slave(s1),
+    {ok, S1} = start_slave(?FUNCTION_NAME),
     receive
         {node_event, S1, up} -> ok
     after 5000 ->
@@ -197,33 +201,40 @@ detect_node_stop_start(_Config) ->
     ok.
 
 unregister_does_not_detect(_Config) ->
-    S1 = make_node_name(s1),
+    S1 = make_node_name(?FUNCTION_NAME),
+    S2 = make_node_name(unregister_does_not_detect_2),
     ok = aten:register(S1),
-    receive
-        {node_event, S1, down} -> ok
-    after 5000 ->
-        exit(node_event_timeout)
-    end,
-    {ok, S1} = start_slave(s1),
+    ok = aten:register(S2),
+    wait_for({node_event, S1, down}),
+    wait_for({node_event, S2, down}),
+    {ok, S1} = start_slave(?FUNCTION_NAME),
+    {ok, S2} = start_slave(unregister_does_not_detect_2),
     ct:pal("Node ~w Nodes ~w", [node(), nodes()]),
-    receive
-        {node_event, S1, up} -> ok
-    after 5000 ->
-        exit(node_event_timeout)
-    end,
+    wait_for({node_event, S1, up}),
+    wait_for({node_event, S2, up}),
+    {monitored_by, MonByPids} = erlang:process_info(self(), monitored_by),
+    DetectorPid = whereis(aten_detector),
+    %% one monitor for the process by each node
+    ?assertEqual(2, length([P || P <- MonByPids, P == DetectorPid])),
     ok = aten:unregister(S1),
+    %% aten:unmregister is a cast so we need to call in before asserting
+    gen_server:call(aten_detector, any),
+    {monitored_by, MonByPidsAfter} = erlang:process_info(self(), monitored_by),
+    ?assertEqual(1, length([P || P <- MonByPidsAfter, P == DetectorPid])),
+    ct_slave:stop(S1),
     receive
         {node_event, S1, Evt} ->
             exit({unexpected_node_event, S1, Evt})
-    after 5000 ->
+    after 1000 ->
         ok
     end,
+    ct_slave:stop(S2),
+    wait_for({node_event, S2, down}),
     ok.
 
 register_unknown_emits_down(_Config) ->
-    S1 = make_node_name(disconnected_node),
+    S1 = make_node_name(?FUNCTION_NAME),
     ok = aten:register(S1),
-    % {ok, S1} = start_slave(s1),
     receive
         {node_event, S1, down} -> ok
     after 5000 ->
@@ -233,14 +244,14 @@ register_unknown_emits_down(_Config) ->
     ok.
 
 register_detects_down(_Config) ->
-    S1 = make_node_name(s1),
+    S1 = make_node_name(?FUNCTION_NAME),
     ok = aten:register(S1),
     receive
         {node_event, S1, down} -> ok
     after 5000 ->
               exit(node_event_timeout)
     end,
-    {ok, S1} = start_slave(s1),
+    {ok, S1} = start_slave(?FUNCTION_NAME),
     receive
         {node_event, S1, up} -> ok
     after 5000 ->
@@ -268,7 +279,7 @@ register_detects_down(_Config) ->
     ok.
 
 watchers_cleanup(_Config) ->
-    Node = make_node_name(s1),
+    Node = make_node_name(?FUNCTION_NAME),
     Self = self(),
     Watcher = spawn_watcher(Node, Self),
     ok = aten:register(Node),
@@ -283,7 +294,7 @@ watchers_cleanup(_Config) ->
     after 5000 ->
         exit(node_event_timeout)
     end,
-    {ok, Node} = start_slave(s1),
+    {ok, Node} = start_slave(?FUNCTION_NAME),
     ct:pal("Node ~w Nodes ~w", [node(), nodes()]),
     receive
         {watcher_node_up, Node} -> ok
@@ -373,7 +384,13 @@ start_slave(N) ->
     {ok, Host} = get_current_host(),
     Pa = string:join(["-pa" | search_paths()], " "),
     ct:pal("starting node ~w with ~s", [N, Pa]),
-    {ok, S} = ct_slave:start(Host, N, [{erl_flags, Pa}]),
+    %% boot_timeout is in seconds, apparently
+    S = case ct_slave:start(Host, N, [{erl_flags, Pa},
+                                      {boot_timeout, 10}]) of
+            {ok, SN} -> SN;
+            {error, started_not_connected, SN} ->
+                SN
+        end,
     _ = rpc:call(S, application, load, [aten]),
     rpc:call(S, application, set_env, [aten, poll_interval, ?POLLINT]),
     rpc:call(S, application, set_env, [aten, heartbeat_interval, ?HBINT]),
@@ -392,4 +409,11 @@ flush() ->
                 flush()
     after ?POLLINT ->
               ok
+    end.
+
+wait_for(Evt) ->
+    receive
+        Evt -> ok
+    after 5000 ->
+              exit({wait_for_timeout, Evt})
     end.
