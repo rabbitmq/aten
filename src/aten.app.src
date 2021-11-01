@@ -1,7 +1,7 @@
 {application,aten,
              [{id,"git"},
               {description,"Erlang node failure detector"},
-              {vsn,"0.5.6"},
+              {vsn,"0.5.7"},
               {licenses,["Apache","MPL"]},
               {links,[{"github","https://github.com/rabbitmq/aten"}]},
               {modules,[aten,aten_app,aten_detect,aten_detector,aten_emitter,
