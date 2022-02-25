@@ -1,15 +1,11 @@
-# PROJECT = aten
-# PROJECT_DESCRIPTION = Node failure detector
-# PROJECT_VERSION = 0.1.0
-# PROJECT_MOD = aten_app
+PROJECT = aten
+PROJECT_DESCRIPTION = A New Adaptive Accrual Failure Detector
+PROJECT_VERSION = 0.6.0
 
-# define PROJECT_ENV
-# [
-# 	{poll_interval, 1000},
-# 	{heartbeat_interval, 100},
-# 	{detection_threshold, 0.99}
-# ]
-# endef
+define PROJECT_ENV
+[
+]
+endef
 
 TEST_DEPS = proper meck eunit_formatters
 
