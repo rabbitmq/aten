@@ -40,7 +40,8 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 get_failure_probabilities() ->
-    gen_server:call(?MODULE, get_failure_probabilities).
+    Data = gen_server:call(?MODULE, get_data),
+    get_probabilities(Data).
 
 -spec beat(node()) -> ok | noconnect | nosuspend.
 beat(DestNode) ->
@@ -64,19 +65,8 @@ init([]) ->
     F = application:get_env(aten, scaling_factor, 1.5),
     {ok, #state{factor = F}}.
 
-handle_call(get_failure_probabilities, From, State) ->
-    Data = State#state.data,
-    % reply in a different process as we don't want calculation times
-    % to affect the sample time of any incoming heartbeats
-    _ = spawn(fun () ->
-                      try
-                          Probs = get_probabilities(Data),
-                          gen_server:reply(From, Probs)
-                      catch ErrType:Error ->
-                          ?LOG_ERROR("get_probabilities error: ~p:~P", [ErrType, Error, 10])
-                      end
-              end),
-    {noreply, State}.
+handle_call(get_data, _From, State) ->
+    {reply, State#state.data, State}.
 
 handle_cast({hb, Node}, #state{data = Data0,
                                monitors = Monitors0,
