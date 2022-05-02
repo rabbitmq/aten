@@ -5,7 +5,9 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        otp: [23.2]
+        otp:
+          - 23.3
+          - 24.3
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v2
