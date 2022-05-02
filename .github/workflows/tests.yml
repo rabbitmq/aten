@@ -6,8 +6,8 @@ jobs:
     strategy:
       matrix:
         otp:
-          - 23.3
-          - 24.3
+          - "23.3.1"
+          - "24.3.3"
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v2
