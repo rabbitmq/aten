@@ -16,8 +16,6 @@ jobs:
       uses: erlef/setup-beam@v1
       with:
         otp-version: ${{ matrix.erlang_version }}
-    - name: Xref
-      run: make xref
     - name: Deps
       run: make test-deps
     - name: Dialyze
