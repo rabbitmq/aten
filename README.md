@@ -1,6 +1,6 @@
 # Aten
 
-[![Build Status](https://travis-ci.org/rabbitmq/aten.svg?branch=master)](https://travis-ci.org/rabbitmq/aten)
+[![Test](https://github.com/rabbitmq/aten/actions/workflows/tests.yml/badge.svg)](https://github.com/rabbitmq/aten/actions/workflows/tests.yml)
 
 This is an implementation of [A New Adaptive Accrual Failure Detector for Dependable Distributed Systems](https://dl.acm.org/citation.cfm?id=1244129)
 for distributed Erlang.
