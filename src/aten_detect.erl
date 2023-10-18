@@ -27,6 +27,7 @@
 
 -export_type([state/0]).
 
+-spec init(number()) -> state().
 init(Factor) ->
     #state{factor = Factor}.
 
