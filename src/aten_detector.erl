@@ -157,10 +157,18 @@ analyse_one(_Curr, _Prev, _Thresh) ->
     no_change.
 
 analyse(Curr, Prev, Thresh) ->
-    Down0 = maps:fold(fun (N, _S, Acc) ->
+    Down0 = maps:fold(fun (N, Sample, Acc) ->
                               case maps:get(N, Curr, undefined) of
                                   undefined ->
-                                      [N | Acc];
+                                      case Sample >= Thresh of
+                                          true ->
+                                              %% already down
+                                              %% this should already have been
+                                              %% been notified
+                                              Acc;
+                                          _ ->
+                                              [N | Acc]
+                                      end;
                                   _ ->
                                       Acc
                               end
