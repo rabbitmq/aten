@@ -10,23 +10,19 @@
          start/0,
          register/1,
          unregister/1
-         ]).
-
--export_type([
-              ]).
-
+        ]).
 
 start() ->
     application:ensure_all_started(aten).
 
--spec register(node()) -> ok.
+-spec register(node()) -> ok | ignore.
+register(Node) when Node == node() ->
+    ignore;
 register(Node) ->
     aten_detector:register(Node).
 
--spec unregister(node()) -> ok.
+-spec unregister(node()) -> ok | ignore.
+unregister(Node) when Node == node() ->
+    ignore;
 unregister(Node) ->
     aten_detector:unregister(Node).
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.

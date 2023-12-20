@@ -8,8 +8,6 @@
 
 -behaviour(gen_server).
 
--include_lib("kernel/include/logger.hrl").
-
 %% API functions
 -export([start_link/0,
          get_failure_probabilities/0,
