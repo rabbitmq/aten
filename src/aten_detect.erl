@@ -68,9 +68,7 @@ failure_prob_at(At, #state{freshness = F,
     SmallNum / max(1, TotNum). % avoid div/0
 
 ts() ->
-    % TODO: should we use erlang monotonic time instead?
-    % It probably doesn't matter
-    erlang:system_time(microsecond).
+    erlang:monotonic_time(microsecond).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
