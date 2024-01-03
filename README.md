@@ -49,4 +49,4 @@ rebar3 compile
 `aten` is [dual-licensed](./LICENSE) under the Mozilla Public License 2.0
 and the Apache Public License 2.0.
 
-(c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
+(c) 2017-2024 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
