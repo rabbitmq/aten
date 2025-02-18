@@ -2,6 +2,9 @@ PROJECT = aten
 PROJECT_DESCRIPTION = A New Adaptive Accrual Failure Detector
 PROJECT_VERSION = 0.6.0
 
+dep_meck = git https://github.com/eproxus/meck.git 1.0.0
+dep_eunit_formatters = git https://github.com/seancribbs/eunit_formatters.git v0.5.0
+
 define PROJECT_ENV
 [
 ]
